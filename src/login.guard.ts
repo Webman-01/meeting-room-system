@@ -10,6 +10,7 @@ import { Permission } from './user/entities/permission.entity';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { UnLoginException } from './unlogin.filter';
 
 //扩展express上的类型
 //此类型为jwt解码完数据类型
@@ -39,7 +40,7 @@ export class LoginGuard implements CanActivate {
     //获取请求信息
     const request: Request = context.switchToHttp().getRequest();
 
-    //用 reflector 从目标 controller 和 handler 上拿到 require-login 的 metadata。
+    //用 reflector 从给目标添加的setMetaData 上拿到 require-login 的 metadata。
     const requireLogin = this.reflector.getAllAndOverride('require-login', [
       context.getClass(),
       context.getHandler(),
@@ -51,7 +52,7 @@ export class LoginGuard implements CanActivate {
     const authorization = request.headers.authorization;
 
     if (!authorization) {
-      throw new UnauthorizedException('用户未登陆');
+      throw new UnLoginException();
     }
     try {
       //authorization 的 header 取出 jwt 来，把用户信息设置到 request，然后放行。

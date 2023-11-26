@@ -9,7 +9,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { RedisService } from 'src/redis/redis.service';
 import { md5 } from 'src/utils';
@@ -17,6 +17,7 @@ import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { LoginUserDto } from './dto/login-user.dto';
 import { LoginUserVo } from './vo/login-user.vo';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 
 @Injectable()
 export class UserService {
@@ -116,7 +117,7 @@ export class UserService {
     return vo;
   }
 
-  //通过id找user
+  //通过id找user(生成token需要的部份user信息)
   async findUserById(userId: number, isAdmin: boolean) {
     const user = await this.userRepository.findOne({
       where: {
@@ -139,6 +140,135 @@ export class UserService {
         });
         return arr;
       }, []),
+    };
+  }
+  //查询用户(全部信息)
+  async findUserInfoById(userId: number) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+      },
+    });
+    return user;
+  }
+
+  //修改密码方法
+  async updatePassword(userId: number, passwordDto: UpdateUserPasswordDto) {
+    //1.检查验证码是否正确
+    const captcha = await this.redisService.get(
+      `update_password_captcha_${passwordDto.email}`,
+    );
+    if (!captcha) {
+      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+    }
+    if (passwordDto.captcha != captcha) {
+      throw new HttpException('验证码错误', HttpStatus.BAD_REQUEST);
+    }
+    //2.找到对应的用户
+    const foundUser = await this.userRepository.findOneBy({
+      id: userId,
+    });
+    //更改密码(把原有的密码改为传入的)
+    foundUser.password = md5(passwordDto.password);
+    try {
+      //保存修改
+      await this.userRepository.save(foundUser);
+      return '修改密码成功';
+    } catch (error) {
+      this.logger.error(error, UserService);
+      return '修改密码失败';
+    }
+  }
+
+  //更改用户信息
+  async updateUserInfo(userId: number, updateUserDto: UpdateUserDto) {
+    //1.获取并验证验证码正确性
+    const captcha = await this.redisService.get(
+      `update_user_captcha_${updateUserDto.email}`,
+    );
+    if (!captcha) {
+      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+    }
+    //输入的验证码不是redis中的存储的验证码
+    if (updateUserDto.captcha != captcha) {
+      throw new HttpException('验证码错误', HttpStatus.BAD_REQUEST);
+    }
+    //2.获取用户信息
+    const foundUser = await this.userRepository.findOneBy({
+      id: userId,
+    });
+    //3.修改信息(如果有传入头像信息就修改)
+    if (updateUserDto.avatar) {
+      foundUser.avatar = updateUserDto.avatar;
+    }
+    if (updateUserDto.nickName) {
+      foundUser.nickName = updateUserDto.nickName;
+    }
+    //4.存储改动到数据库
+    try {
+      await this.userRepository.save(foundUser);
+      return '用户信息修改成功';
+    } catch (error) {
+      this.logger.error(error, UserService);
+      return '用户信息修改失败';
+    }
+  }
+
+  //冻结用户
+  async freezeUserById(id: number) {
+    const user = await this.userRepository.findOneBy({
+      id,
+    });
+    //把用户的是否冻结字段设为true
+    user.isFrozen = true;
+    //存储修改
+    await this.userRepository.save(user);
+  }
+
+  //用户列表
+  async findUserByPage(
+    username: string,
+    nickName: string,
+    email: string,
+    pageNo: number,
+    pageSize: number,
+  ) {
+    //pageNo:当前的页数，pageSize:一页几个
+    //分页查询只要计算出当前页码跳过多少条记录，取多少条记录
+    const skipCount = (pageNo - 1) * pageSize; //跳过的个数
+    const condition: Record<string, any> = {}; //Record<string, any>声明一种键值结构的对象
+
+    //如果有传入用户名就进行模糊匹配，然后返回
+    if (username) {
+      condition.username = Like(`%${username}%`); //Like用于模糊匹配,%${username}% 表示要匹配的模式是：在用户名的任意位置都可以包含任意数量的字符（包括零个字符），并且模式与 username 的值进行匹配,  % 符号可以实现模糊匹配的效果
+    }
+    if (nickName) {
+      condition.nickName = Like(`%${nickName}%`);
+    }
+    if (email) {
+      condition.email = Like(`%${email}%`);
+    }
+
+    const [users, totalCount] = await this.userRepository.findAndCount({
+      //findAndCount根据指定的条件在用户存储库中查找匹配的用户，并返回两个值：一个是满足条件的用户列表，另一个是满足条件的用户数量。
+      //查询条件:
+      select: [
+        'id',
+        'username',
+        'nickName',
+        'email',
+        'phoneNumber',
+        'isFrozen',
+        'avatar',
+        'createTime',
+      ], //指定查询返回用户的哪些信息
+      skip: skipCount, //跳过几页
+      take: pageSize, //每页的记录数
+      where: condition, //限制查询结果
+    });
+    return {
+      users,
+      totalCount,
     };
   }
 
