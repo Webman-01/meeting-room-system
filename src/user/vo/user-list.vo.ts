@@ -1,9 +1,6 @@
-//对于userService中的findUserInfoById方法只需要一部份的user信息
-
 import { ApiProperty } from '@nestjs/swagger';
 
-//此user用于封装返回的结果
-export class UserInfoVo {
+class User {
   @ApiProperty()
   id: number;
 
@@ -17,14 +14,24 @@ export class UserInfoVo {
   email: string;
 
   @ApiProperty()
-  avatar: string;
-
-  @ApiProperty()
   phoneNumber: string;
 
   @ApiProperty()
   isFrozen: boolean;
 
   @ApiProperty()
+  avatar: string;
+
+  @ApiProperty()
   createTime: Date;
+}
+
+export class UserListVo {
+  @ApiProperty({
+    type: [User],
+  })
+  users: User[];
+
+  @ApiProperty()
+  totalCount: number;
 }
