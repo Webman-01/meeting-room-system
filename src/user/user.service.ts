@@ -132,6 +132,7 @@ export class UserService {
       id: user.id,
       username: user.username,
       isAdmin: user.isAdmin,
+      email: user.email,
       roles: user.roles.map((item) => item.name),
       permissions: user.roles.reduce((arr, item) => {
         item.permissions.forEach((permission) => {
@@ -154,7 +155,7 @@ export class UserService {
   }
 
   //修改密码方法
-  async updatePassword(userId: number, passwordDto: UpdateUserPasswordDto) {
+  async updatePassword(passwordDto: UpdateUserPasswordDto) {
     //1.检查验证码是否正确
     const captcha = await this.redisService.get(
       `update_password_captcha_${passwordDto.email}`,
@@ -167,8 +168,11 @@ export class UserService {
     }
     //2.找到对应的用户
     const foundUser = await this.userRepository.findOneBy({
-      id: userId,
+      username: passwordDto.username,
     });
+    if (foundUser.email != passwordDto.email) {
+      throw new HttpException('邮箱不正确', HttpStatus.BAD_REQUEST);
+    }
     //更改密码(把原有的密码改为传入的)
     foundUser.password = md5(passwordDto.password);
     try {

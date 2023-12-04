@@ -11,6 +11,9 @@ import {
   UnauthorizedException,
   DefaultValuePipe,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -28,7 +31,6 @@ import { generateParseIntPipe } from 'src/utils';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiProperty,
   ApiQuery,
   ApiResponse,
   ApiTags,
@@ -36,6 +38,9 @@ import {
 import { LoginUserVo } from './vo/login-user.vo';
 import { RefreshTokenVo } from './vo/refresh-token.vo';
 import { UserListVo } from './vo/user-list.vo';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as path from 'path';
+import { storage } from 'src/my-file-storage';
 
 @ApiTags('用户管理模块')
 @Controller('user')
@@ -97,6 +102,7 @@ export class UserController {
         userId: vo.userInfo.id,
         username: vo.userInfo.username,
         roles: vo.userInfo.roles,
+        email: vo.userInfo.email,
         permissions: vo.userInfo.permissions,
       },
       {
@@ -127,6 +133,7 @@ export class UserController {
         userId: vo.userInfo.id,
         username: vo.userInfo.username,
         roles: vo.userInfo.roles,
+        email: vo.userInfo.email,
         permissions: vo.userInfo.permissions,
       },
       {
@@ -179,6 +186,7 @@ export class UserController {
         {
           userId: user.id,
           username: user.username,
+          email: user.email,
           roles: user.roles,
           permissions: user.permissions,
         },
@@ -231,6 +239,7 @@ export class UserController {
           userId: user.id,
           username: user.username,
           roles: user.roles,
+          email: user.email,
           permissions: user.permissions,
         },
         {
@@ -309,7 +318,6 @@ export class UserController {
   }
 
   //修改密码接口(管理员和普通用户修改密码的页面是一样的，所以只用写一个接口)
-  @ApiBearerAuth()
   @ApiBody({
     type: UpdateUserPasswordDto,
   })
@@ -318,16 +326,10 @@ export class UserController {
     description: '验证码失效/不正确',
   })
   @Post(['update_password', 'admin/update_password'])
-  @RequireLogin()
-  //用 @UserInfo 从 request.user 取 userId，其余的通过 dto 传
-  async updatePassword(
-    @UserInfo('userId') userId: number,
-    @Body() passwordDto: UpdateUserPasswordDto,
-  ) {
-    return await this.userService.updatePassword(userId, passwordDto);
+  async updatePassword(@Body() passwordDto: UpdateUserPasswordDto) {
+    return await this.userService.updatePassword(passwordDto);
   }
   ////修改密码时发送验证码
-  @ApiBearerAuth()
   @ApiQuery({
     name: 'address',
     description: '邮箱地址',
@@ -337,7 +339,6 @@ export class UserController {
     type: String,
     description: '发送成功',
   })
-  @RequireLogin()
   @Get('update_password/captcha')
   async updatePasswordCaptcha(@Query('address') address: string) {
     const code = Math.random().toString().slice(2, 8);
@@ -377,9 +378,16 @@ export class UserController {
   ) {
     return await this.userService.updateUserInfo(userId, updateUserDto);
   }
+
   //修改信息发送验证码
+  @ApiBearerAuth()
+  @ApiResponse({
+    type: String,
+    description: '发送成功',
+  })
+  @RequireLogin()
   @Get('updateUserInfo/captcha')
-  async updateCaptcha(@Query('address') address: string) {
+  async updateCaptcha(@UserInfo('email') address: string) {
     const code = Math.random().toString().slice(2, 8);
 
     await this.redisService.set(
@@ -470,6 +478,30 @@ export class UserController {
     );
   }
 
+  //更新头像
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      dest: 'uploads',
+      storage: storage,
+      limits: {
+        fileSize: 1024 * 1024 * 3, //限制图片大小
+      },
+      fileFilter(req, file, callback) {
+        const extname = path.extname(file.originalname);
+        if (['.png', '.jpg', '.gif'].includes(extname)) {
+          //callback 的第一个参数是 error，第二个参数是是否接收文件
+          callback(null, true);
+        } else {
+          callback(new BadRequestException('只能上传图片'), false);
+        }
+      },
+    }),
+  )
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    console.log(file, 'file');
+    return file.path;
+  }
   @Get('init-data')
   async initData() {
     await this.userService.initData();
