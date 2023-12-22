@@ -30,7 +30,7 @@ export class MeetingRoomController {
     )
     pageSize: number,
     @Query('name') name: string,
-    @Query('capacity') capacity: number,
+    @Query('capacity') capacity: string,
     @Query('equipment') equipment: string,
   ) {
     return await this.meetingRoomService.find(

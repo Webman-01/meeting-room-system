@@ -12,7 +12,7 @@ export class CreateMeetingRoomDto {
   @IsNotEmpty({
     message: '容量不能为空',
   })
-  capacity: number;
+  capacity: string;
 
   @IsNotEmpty({
     message: '位置不能为空',

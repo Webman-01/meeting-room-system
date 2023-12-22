@@ -13,19 +13,19 @@ export class MeetingRoomService {
   initData() {
     const room1 = new MeetingRoom();
     room1.name = '木星';
-    room1.capacity = 10;
+    room1.capacity = '10';
     room1.equipment = '白板';
     room1.location = '一层西';
 
     const room2 = new MeetingRoom();
     room2.name = '金星';
-    room2.capacity = 5;
+    room2.capacity = '5';
     room2.equipment = '';
     room2.location = '二层东';
 
     const room3 = new MeetingRoom();
     room3.name = '天王星';
-    room3.capacity = 30;
+    room3.capacity = '30';
     room3.equipment = '白板，电视';
     room3.location = '三层东';
 
@@ -37,7 +37,7 @@ export class MeetingRoomService {
     pageNo: number,
     pageSize: number,
     name: string,
-    capacity: number,
+    capacity: string,
     equipment: string,
   ) {
     if (pageNo < 1) {
@@ -104,6 +104,13 @@ export class MeetingRoomService {
     meetingRoom.capacity = meetingRoomDto.capacity;
     meetingRoom.location = meetingRoomDto.location;
     meetingRoom.name = meetingRoomDto.name;
+    //校验更改过的会议室名不能和已有的相同
+    const room = await this.repository.findOneBy({
+      name: meetingRoom.name,
+    });
+    if (room) {
+      throw new BadRequestException('会议室名已存在');
+    }
     if (meetingRoomDto.description) {
       meetingRoom.description = meetingRoomDto.description;
     }

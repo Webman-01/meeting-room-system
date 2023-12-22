@@ -22,7 +22,7 @@ export class MeetingRoom {
   @Column({
     comment: '会议室容量',
   })
-  capacity: number;
+  capacity: string;
 
   @Column({
     length: 50,
