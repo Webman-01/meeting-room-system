@@ -1,8 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { Between, EntityManager, Like } from 'typeorm';
+import {
+  Between,
+  EntityManager,
+  LessThanOrEqual,
+  Like,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { MeetingRoom } from 'src/meeting-room/entities/meeting-room.entity';
 import { Booking } from './entities/booking.entity';
@@ -124,6 +130,40 @@ export class BookingService {
       html: `id 为 ${id} 的预定申请正在等待审批`,
     });
     this.redisService.set('urge_' + id, 1, 60 * 30);
+  }
+  //预订会议室
+  async add(bookingDto: CreateBookingDto, userId: number) {
+    //根据传入的会议室id找到该会议室
+    const meetingRoom = await this.entityManager.findOneBy(MeetingRoom, {
+      id: bookingDto.meetingRoomId,
+    });
+    if (!meetingRoom) {
+      throw new BadRequestException('会议室不存在');
+    }
+    //通过用户id找到用户
+    const user = await this.entityManager.findOneBy(User, {
+      id: userId,
+    });
+    //创建booking
+    const booking = new Booking();
+    booking.room = meetingRoom;
+    booking.user = user;
+    booking.note = bookingDto.text
+    booking.startTime = new Date(bookingDto.startTime);
+    booking.endTime = new Date(bookingDto.endTime);
+
+    const res = await this.entityManager.findOneBy(Booking, {
+      room: {
+        id: meetingRoom.id,
+      },
+      //新增会议预订时间要与该会议室已经预订的时间错开
+      startTime: LessThanOrEqual(booking.startTime),
+      endTime: MoreThanOrEqual(booking.endTime),
+    });
+    if (res) {
+      throw new BadRequestException('该会议室已经被预订');
+    }
+    await this.entityManager.save(Booking, booking);
   }
   create(createBookingDto: CreateBookingDto) {
     return 'This action adds a new booking';
