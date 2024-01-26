@@ -229,6 +229,14 @@ export class UserService {
     //存储修改
     await this.userRepository.save(user);
   }
+  //解冻用户
+  async thawUserById(id:number){
+    const user = await this.userRepository.findOneBy({
+      id
+    })
+    user.isFrozen = false
+    await this.userRepository.save(user)
+  }
 
   //用户列表
   async findUserByPage(

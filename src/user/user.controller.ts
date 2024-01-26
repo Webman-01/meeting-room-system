@@ -423,6 +423,24 @@ export class UserController {
     return 'ok';
   }
 
+  //解冻用户
+  @ApiBearerAuth()
+  @ApiQuery({
+    type: String,
+    name: 'id',
+    description: 'userId',
+  })
+  @ApiResponse({
+    type: String,
+    description: 'success',
+  })
+  @RequireLogin()
+  @Get('thaw')
+  async thaw(@Query('id') userId: number) {
+    await this.userService.thawUserById(userId);
+    return 'ok';
+  }
+
   //用户列表(接口支持分页查询，传入 pageNo、pageSize，返回对应页的数据)
   //new DefaultValuePipe用于设置没传参数时的默认值
   @ApiBearerAuth()
