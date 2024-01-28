@@ -14,14 +14,14 @@ class UserInfo {
   @ApiProperty({ example: '张三' })
   nickName: string;
 
-  @ApiProperty({ example: 'xx@xx.com' })
-  email: string;
+  // @ApiProperty({ example: 'xx@xx.com' })
+  // email: string;
 
   @ApiProperty({ example: 'xxx.png' })
   avatar: string;
 
-  @ApiProperty({ example: '12222222222' })
-  phoneNumber: string;
+  // @ApiProperty({ example: '12222222222' })
+  // phoneNumber: string;
 
   @ApiProperty()
   isFrozen: boolean;

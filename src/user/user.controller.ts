@@ -102,7 +102,7 @@ export class UserController {
         userId: vo.userInfo.id,
         username: vo.userInfo.username,
         roles: vo.userInfo.roles,
-        email: vo.userInfo.email,
+        // email: vo.userInfo.email,
         permissions: vo.userInfo.permissions,
       },
       {
@@ -133,7 +133,7 @@ export class UserController {
         userId: vo.userInfo.id,
         username: vo.userInfo.username,
         roles: vo.userInfo.roles,
-        email: vo.userInfo.email,
+        // email: vo.userInfo.email,
         permissions: vo.userInfo.permissions,
       },
       {
@@ -340,6 +340,7 @@ export class UserController {
     description: '发送成功',
   })
   @Get('update_password/captcha')
+  @RequireLogin()
   async updatePasswordCaptcha(@Query('address') address: string) {
     const code = Math.random().toString().slice(2, 8);
 
