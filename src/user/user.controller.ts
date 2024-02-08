@@ -329,7 +329,8 @@ export class UserController {
   async updatePassword(@Body() passwordDto: UpdateUserPasswordDto) {
     return await this.userService.updatePassword(passwordDto);
   }
-  ////修改密码时发送验证码
+
+  //修改密码时发送验证码
   @ApiQuery({
     name: 'address',
     description: '邮箱地址',
@@ -386,9 +387,11 @@ export class UserController {
     type: String,
     description: '发送成功',
   })
-  @RequireLogin()
   @Get('updateUserInfo/captcha')
+  @RequireLogin()
   async updateCaptcha(@UserInfo('email') address: string) {
+    console.log(address);
+    
     const code = Math.random().toString().slice(2, 8);
 
     await this.redisService.set(
