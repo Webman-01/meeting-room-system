@@ -119,7 +119,6 @@ export class BookingController {
   }
 
   //通过申请
-
   @Get('apply/:id')
   async apply(@Param('id') id: number) {
     return this.bookingService.apply(id);
